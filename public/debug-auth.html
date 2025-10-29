@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Debug</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
+        .param {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Magic Email Auth Debug</h1>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const url = new URL(window.location.href);
+        const params = {};
+        
+        // 收集所有 URL 参数
+        for (const [key, value] of url.searchParams.entries()) {
+            params[key] = value;
+        }
+        
+        // 收集 hash 参数 (如果有)
+        if (url.hash) {
+            const hashParams = new URLSearchParams(url.hash.substring(1));
+            for (const [key, value] of hashParams.entries()) {
+                params['hash_' + key] = value;
+            }
+        }
+
+        const resultDiv = document.getElementById('result');
+        
+        // 显示完整 URL
+        resultDiv.innerHTML = `
+            <div class="info">
+                <strong>完整 URL:</strong>
+                <pre>${window.location.href}</pre>
+            </div>
+        `;
+
+        // 显示所有参数
+        if (Object.keys(params).length > 0) {
+            resultDiv.innerHTML += '<h2>URL 参数：</h2>';
+            for (const [key, value] of Object.entries(params)) {
+                resultDiv.innerHTML += `
+                    <div class="param">
+                        <strong>${key}:</strong> ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}
+                    </div>
+                `;
+            }
+            
+            // 检查关键参数
+            if (params.code) {
+                resultDiv.innerHTML += `
+                    <div class="info success">
+                        <strong>✅ 找到 code 参数</strong><br>
+                        这是正确的 Magic Link 回调！
+                    </div>
+                `;
+            } else if (params.error || params.error_description) {
+                resultDiv.innerHTML += `
+                    <div class="info error">
+                        <strong>❌ 发现错误</strong><br>
+                        ${params.error_description || params.error}
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML += `
+                    <div class="info error">
+                        <strong>⚠️ 未找到 code 参数</strong><br>
+                        这可能不是有效的 Magic Link 回调
+                    </div>
+                `;
+            }
+        } else {
+            resultDiv.innerHTML += `
+                <div class="info">
+                    <strong>ℹ️ 没有找到 URL 参数</strong><br>
+                    这个页面需要通过 Magic Link 访问
+                </div>
+            `;
+        }
+
+        // 检查 Supabase 环境变量
+        resultDiv.innerHTML += `
+            <h2>环境检查：</h2>
+            <div class="param">
+                <strong>Current Origin:</strong> ${window.location.origin}
+            </div>
+            <div class="info">
+                <strong>✅ 确认事项：</strong><br>
+                1. Supabase 控制台中的 Redirect URLs 必须包含：<br>
+                <code>${window.location.origin}/</code><br>
+                <code>${window.location.origin}/auth</code>
+            </div>
+        `;
+
+        // 添加测试按钮
+        resultDiv.innerHTML += `
+            <div style="margin-top: 20px;">
+                <a href="/" style="display: inline-block; background: #2196f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+                    返回主页
+                </a>
+                <a href="/auth" style="display: inline-block; background: #4caf50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin-left: 10px;">
+                    前往登录页
+                </a>
+            </div>
+        `;
+    </script>
+</body>
+</html>
+
