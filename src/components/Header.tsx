@@ -41,7 +41,12 @@ export default function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="font-bold text-xl text-primary">BiteChina</div>
+          <img
+            src="https://fortunenews-admin-beta.vercel.app/BiteChina.png"
+            alt="BiteChina logo"
+            className="h-8 w-auto"
+          />
+          <span className="sr-only">BiteChina</span>
         </Link>
 
         {/* Desktop Navigation */}
