@@ -2,6 +2,7 @@ import { apiBaseUrl } from "./base";
 
 export interface PublicNewsItem {
   id: number;
+  slug: string | null;
   title: string;
   isoDate: string;
   link: string;
@@ -96,8 +97,9 @@ export const fetchNewsList = async (params?: PublicNewsQueryParams) => {
   return news;
 };
 
-export const fetchNewsById = async (id: number | string) => {
-  const response = await fetch(`${apiBaseUrl}/public/news/${id}`);
+export const fetchNewsBySlug = async (slugOrId: number | string) => {
+  const identifier = encodeURIComponent(String(slugOrId));
+  const response = await fetch(`${apiBaseUrl}/public/news/${identifier}`);
 
   if (!response.ok) {
     if (response.status === 404) {

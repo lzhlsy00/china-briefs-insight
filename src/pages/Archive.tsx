@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import BriefCard from "@/components/BriefCard";
+import BriefCard, { type BriefCardProps } from "@/components/BriefCard";
 import { Search, Filter, Calendar } from "lucide-react";
 import { useLanguage, type Language } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
@@ -60,7 +60,13 @@ const getRecommendation = (item: PublicNewsItem, language: Language) => {
 };
 
 // 辅助函数：转换为 BriefCard 所需格式
-const toBriefCardData = (item: PublicNewsItem, language: Language) => {
+const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardProps | null => {
+  const slug = item.slug?.trim();
+  if (!slug) {
+    console.warn("Skipping news without slug", item.id);
+    return null;
+  }
+
   const content = getContent(item, language);
   const summary = content;
   const title = getTitle(item, language);
@@ -68,6 +74,7 @@ const toBriefCardData = (item: PublicNewsItem, language: Language) => {
 
   return {
     id: String(item.id),
+    slug,
     title: title || summary,
     summary,
     recommendation,
@@ -103,7 +110,8 @@ export default function Archive() {
 
     return newsData
       .filter((item) => hasTranslation(item, language))
-      .map((item) => toBriefCardData(item, language));
+      .map((item) => toBriefCardData(item, language))
+      .filter((brief): brief is BriefCardProps => Boolean(brief));
   }, [newsData, language]);
 
   const filteredBriefs = useMemo(() => {
@@ -186,7 +194,7 @@ export default function Archive() {
         {!isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredBriefs.map((brief) => (
-              <BriefCard key={brief.id} {...brief} />
+              <BriefCard key={brief.slug} {...brief} />
             ))}
           </div>
         )}

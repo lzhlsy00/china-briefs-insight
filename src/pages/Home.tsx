@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import BriefCard from "@/components/BriefCard";
+import BriefCard, { type BriefCardProps } from "@/components/BriefCard";
 import { Check, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -69,13 +69,20 @@ const createRecommendation = (item: PublicNewsItem, language: Language) => {
   return reason ? reason.trim() : null;
 };
 
-const toBriefCardData = (item: PublicNewsItem, language: Language) => {
+const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardProps | null => {
+  const slug = item.slug?.trim();
+  if (!slug) {
+    console.warn("Skipping news without slug", item.id);
+    return null;
+  }
+
   const summary = createSummary(item, language);
   const recommendation = createRecommendation(item, language);
   const titleCandidate = createTitle(item, language);
 
   return {
     id: String(item.id),
+    slug,
     title: titleCandidate || summary,
     summary,
     recommendation,
@@ -120,7 +127,8 @@ export default function Home() {
     return highlightedNews
       .filter((item) => hasTranslation(item, language))
       .slice(0, 3)
-      .map((item) => toBriefCardData(item, language));
+      .map((item) => toBriefCardData(item, language))
+      .filter((brief): brief is BriefCardProps => Boolean(brief));
   }, [highlightedNews, language]);
 
   return (
@@ -193,7 +201,7 @@ export default function Home() {
                 {t.highlightsError}
               </div>
             ) : highlights.length > 0 ? (
-              highlights.map((brief) => <BriefCard key={brief.id} {...brief} />)
+              highlights.map((brief) => <BriefCard key={brief.slug} {...brief} />)
             ) : (
               <div className="col-span-full text-center text-sm text-muted-foreground">
                 {t.highlightsEmpty}

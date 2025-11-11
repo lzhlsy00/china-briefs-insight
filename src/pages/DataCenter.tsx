@@ -11,6 +11,7 @@ export default function DataCenter() {
   const reports = [
     {
       id: "1",
+      slug: "china-ai-market-outlook-2025",
       title: "2025 China AI Market Outlook Report",
       description: "60-page report analyzing major China AI industry trends and investment opportunities",
       price: 49000,
@@ -20,6 +21,7 @@ export default function DataCenter() {
     },
     {
       id: "2",
+      slug: "china-ev-value-chain-analysis",
       title: "China EV Industry Value Chain Analysis",
       description: "In-depth analysis of China EV ecosystem from batteries to autonomous driving",
       price: 39000,
@@ -29,6 +31,7 @@ export default function DataCenter() {
     },
     {
       id: "3",
+      slug: "chinese-brand-market-entry-cases",
       title: "2024 Chinese Brand Market Entry Case Studies",
       description: "Analysis of 20 Chinese brand cases entering various markets",
       price: 29000,
@@ -38,6 +41,7 @@ export default function DataCenter() {
     },
     {
       id: "4",
+      slug: "hong-kong-ipo-investment-guide",
       title: "Hong Kong IPO Market Investment Guide",
       description: "Notable 2025 Hong Kong listings and investment strategies",
       price: 45000,
@@ -47,6 +51,7 @@ export default function DataCenter() {
     },
     {
       id: "5",
+      slug: "china-semiconductor-rise",
       title: "China Semiconductor Rise: Current Status & Outlook",
       description: "Present and future of China's semiconductor industry amid US-China tensions",
       price: 55000,
@@ -56,6 +61,7 @@ export default function DataCenter() {
     },
     {
       id: "6",
+      slug: "china-robotics-startup-ecosystem",
       title: "China Robotics Startup Ecosystem",
       description: "Key companies and technology trends in industrial and service robots",
       price: 35000,
@@ -87,7 +93,7 @@ export default function DataCenter() {
             {reports
               .filter((report) => report.featured)
               .map((report) => (
-                <Link key={report.id} to={`/article/${report.id}`}>
+                <Link key={report.slug} to={`/article/${report.slug}`}>
                   <Card className="group hover:shadow-card-hover transition-all duration-300 border-accent/20 bg-card rounded-2xl h-full"
                   >
                   <CardHeader>
@@ -133,7 +139,7 @@ export default function DataCenter() {
             {reports
               .filter((report) => !report.featured)
               .map((report) => (
-                <Link key={report.id} to={`/article/${report.id}`}>
+                <Link key={report.slug} to={`/article/${report.slug}`}>
                   <Card className="group hover:shadow-card-hover transition-all duration-300 border-border bg-card rounded-2xl h-full"
                   >
                   <CardHeader>

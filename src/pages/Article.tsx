@@ -7,7 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import type { Language } from "@/lib/translations";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
-import { fetchNewsById, fetchNewsList, type PublicNewsItem } from "@/lib/api/news";
+import { fetchNewsBySlug, fetchNewsList, type PublicNewsItem } from "@/lib/api/news";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -18,23 +18,23 @@ const stripHtml = (html: string): string => {
 };
 
 export default function Article() {
-  const { id } = useParams();
+  const { slug } = useParams<{ slug: string }>();
   const { t, language } = useLanguage();
   const { user, subscription } = useAuth();
   const isProSubscriber = subscription.subscribed;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["article", id],
-    enabled: Boolean(id),
+    queryKey: ["article", slug],
+    enabled: Boolean(slug),
     queryFn: async () => {
-      if (!id) return null;
-      return fetchNewsById(id);
+      if (!slug) return null;
+      return fetchNewsBySlug(slug);
     },
   });
 
   // 获取相关文章（优先基于分类，否则获取最新文章）
   const { data: relatedNewsData } = useQuery({
-    queryKey: ["relatedNews", data?.category, id],
+    queryKey: ["relatedNews", data?.category, slug],
     enabled: Boolean(data),
     queryFn: async () => {
       if (!data) return [];
@@ -56,6 +56,7 @@ export default function Article() {
   const article = useMemo(() => {
     if (!data) return null;
 
+    const canonicalSlug = (data.slug ?? slug ?? "").trim();
     const titleCandidate = language === "ko" ? data.titleKo ?? data.titleEn : data.titleEn ?? data.titleKo;
     const contentCandidate = language === "ko" ? data.translationKo ?? data.translationEn ?? data.content : data.translationEn ?? data.translationKo ?? data.content;
     const tags = (data.category ?? "")
@@ -70,6 +71,7 @@ export default function Article() {
 
     return {
       id: String(data.id),
+      slug: canonicalSlug,
       title: stripHtml(titleCandidate || data.title || data.link || "").trim(),
       date: data.isoDate,
       tags,
@@ -77,11 +79,14 @@ export default function Article() {
       contentMarkdown: normalizedMarkdown,
       recommendation: null as string | null,
     };
-  }, [data, language]);
+  }, [data, language, slug]);
 
   // 处理相关文章：过滤当前文章，必须同时有韩文和英文标题，限制数量
   const relatedArticles = useMemo(() => {
     if (!relatedNewsData || !data) return [];
+
+    const currentSlug = (data.slug ?? slug ?? "").trim();
+    const getSlug = (item: PublicNewsItem) => item.slug?.trim() ?? null;
 
     // 检查是否同时有韩文和英文标题
     const hasBothTitles = (item: PublicNewsItem) => {
@@ -97,15 +102,19 @@ export default function Article() {
     };
 
     return relatedNewsData
-      .filter((item) => item.id !== data.id) // 排除当前文章
+      .filter((item) => {
+        const relatedSlug = getSlug(item);
+        return Boolean(relatedSlug) && relatedSlug !== currentSlug;
+      })
       .filter((item) => hasBothTitles(item)) // 必须同时有韩文和英文标题
       .slice(0, 4) // 限制4篇
       .map((item) => ({
         id: item.id,
+        slug: getSlug(item) as string,
         title: getTitle(item, language),
         date: item.isoDate,
       }));
-  }, [relatedNewsData, data, language]);
+  }, [relatedNewsData, data, language, slug]);
 
   const articlePlainContent = article?.content ?? "";
   const articleMarkdownContent = article?.contentMarkdown ?? "";
@@ -220,8 +229,8 @@ export default function Article() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {relatedArticles.map((related) => (
                 <Link
-                  key={related.id}
-                  to={`/article/${related.id}`}
+                  key={related.slug}
+                  to={`/article/${related.slug}`}
                   className="bg-card rounded-xl border border-border p-6 hover:shadow-card transition-shadow"
                 >
                   <h3 className="font-semibold text-foreground mb-2">{related.title}</h3>

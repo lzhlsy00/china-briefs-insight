@@ -143,7 +143,7 @@ serve(async (req) => {
           <table width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08); overflow: hidden;">
             <tr>
               <td style="padding: 32px 32px 16px 32px; text-align: center;">
-                <img src="https://fortunenews-admin.vercel.app/BiteChina.png" alt="BiteChina" width="160" style="display: block; margin: 0 auto 12px;" />
+                <img src="https://www.bitechina.com/BiteChina.png" alt="BiteChina" width="160" style="display: block; margin: 0 auto 12px;" />
                 <h1 style="font-size: 28px; font-weight: 700; margin: 0; color: #0f172a;">${subject}</h1>
                 <p style="color: #64748b; font-size: 16px; margin: 12px 0 0;">🗞️ China Tech, Brand & AI Daily<br />Stay updated with China’s latest tech, AI, and consumer trends — in one bite.</p>
               </td>

@@ -65,35 +65,48 @@ serve(async (req) => {
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
-      limit: 1,
+      status: "all",
+      limit: 5,
     });
-    const hasActiveSub = subscriptions.data.length > 0;
+
+    const eligibleSubscription = subscriptions.data.find((subscription) => {
+      const status = subscription.status ?? "incomplete";
+      return status === "active" || status === "trialing";
+    });
+
+    const hasActiveSub = Boolean(eligibleSubscription);
+    const isTrialing = eligibleSubscription?.status === "trialing";
     let productId = null;
     let subscriptionEnd = null;
 
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      const periodEndSeconds = subscription.current_period_end ?? subscription.trial_end ?? subscription.cancel_at ?? null;
-      if (typeof periodEndSeconds === "number") {
-        subscriptionEnd = new Date(periodEndSeconds * 1000).toISOString();
-        logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+    if (eligibleSubscription) {
+      const endTimestamp = isTrialing
+        ? eligibleSubscription.trial_end
+        : eligibleSubscription.current_period_end ?? eligibleSubscription.cancel_at ?? eligibleSubscription.ended_at ?? null;
+
+      if (typeof endTimestamp === "number") {
+        subscriptionEnd = new Date(endTimestamp * 1000).toISOString();
+        logStep("Eligible subscription found", {
+          subscriptionId: eligibleSubscription.id,
+          status: eligibleSubscription.status,
+          endDate: subscriptionEnd,
+        });
       } else {
-        logStep("Active subscription missing period end", { subscriptionId: subscription.id, periodEndSeconds });
+        logStep("Eligible subscription missing end timestamp", { subscriptionId: eligibleSubscription.id, endTimestamp });
       }
 
-      const firstItem = subscription.items?.data?.[0];
+      const firstItem = eligibleSubscription.items?.data?.[0];
       if (firstItem?.price?.product) {
         productId = firstItem.price.product;
         logStep("Determined subscription tier", { productId });
       } else {
-        logStep("Subscription item missing product info", { subscriptionId: subscription.id });
+        logStep("Subscription item missing product info", { subscriptionId: eligibleSubscription.id });
       }
     } else {
-      logStep("No active subscription found");
+      logStep("No active or trialing subscription found");
     }
 
-    const subscriptionStatus = hasActiveSub ? "pro" : "free";
+    const subscriptionStatus = hasActiveSub ? (isTrialing ? "trial" : "pro") : "free";
 
     if (adminClient) {
       try {
@@ -119,8 +132,9 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
+      trialing: isTrialing,
       product_id: productId,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

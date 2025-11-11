@@ -32,7 +32,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/archive" element={<Archive />} />
-                  <Route path="/article/:id" element={<Article />} />
+                  <Route path="/article/:slug" element={<Article />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/auth" element={<Auth />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

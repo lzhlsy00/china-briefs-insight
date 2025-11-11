@@ -42,7 +42,7 @@ export default function Header() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <img
-            src="https://fortunenews-admin-beta.vercel.app/BiteChina.png"
+            src="https://www.bitechina.com/BiteChina.png"
             alt="BiteChina logo"
             className="h-8 w-auto"
           />

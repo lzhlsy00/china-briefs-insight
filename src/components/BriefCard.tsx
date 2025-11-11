@@ -5,8 +5,9 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import MarkdownText from "@/components/MarkdownText";
 
-interface BriefCardProps {
+export interface BriefCardProps {
   id: string;
+  slug: string;
   title: string;
   summary: string;
   recommendation?: string | null;
@@ -16,6 +17,7 @@ interface BriefCardProps {
 
 export default function BriefCard({
   id,
+  slug,
   title,
   summary,
   recommendation,
@@ -25,7 +27,7 @@ export default function BriefCard({
   const { t } = useLanguage();
 
   return (
-    <Link to={`/article/${id}`}>
+    <Link to={`/article/${slug}`}>
       <Card className="group hover:shadow-card-hover transition-all duration-300 border-border bg-card rounded-2xl overflow-hidden cursor-pointer">
         <CardHeader className="pb-3">
           <div className="mb-2">

@@ -14,6 +14,11 @@ const logStep = (step: string, details?: any) => {
 
 const DEFAULT_PRICE_ID = Deno.env.get("STRIPE_PRICE_ID_DEFAULT");
 const KOREA_PRICE_ID = Deno.env.get("STRIPE_PRICE_ID_KR");
+const TRIAL_DAYS = (() => {
+  const raw = Deno.env.get("STRIPE_TRIAL_DAYS") ?? "7";
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+})();
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -76,6 +81,10 @@ serve(async (req) => {
         supabase_email: user.email,
       },
       subscription_data: {
+        trial_period_days: TRIAL_DAYS,
+        trial_settings: {
+          end_behavior: { missing_payment_method: "cancel" },
+        },
         metadata: {
           user_id: user.id,
         },
