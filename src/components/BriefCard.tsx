@@ -13,6 +13,7 @@ export interface BriefCardProps {
   recommendation?: string | null;
   tags?: string[];
   date: string;
+  isoDateValue?: string;
 }
 
 export default function BriefCard({

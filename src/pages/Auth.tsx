@@ -10,6 +10,8 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Helmet } from "react-helmet-async";
+import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
 
 const magicLinkSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }).max(255),
@@ -47,6 +49,9 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const pageTitle = `${t.auth.title} | ${seoDefaults.siteName}`;
+  const description = formatMetaDescription(t.auth.description);
+  const canonicalUrl = buildCanonicalUrl("/auth");
 
   const magicLinkForm = useForm({
     resolver: zodResolver(magicLinkSchema),
@@ -97,7 +102,23 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4">
+    <>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content={seoDefaults.siteName} />
+        <meta property="og:image" content={seoDefaults.ogImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={seoDefaults.ogImage} />
+      </Helmet>
+      <div className="min-h-screen flex items-center justify-center py-12 px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">{t.auth.title}</CardTitle>
@@ -251,6 +272,7 @@ export default function Auth() {
           {t.auth.termsText}
         </CardFooter>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }

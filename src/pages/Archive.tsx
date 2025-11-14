@@ -3,10 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import BriefCard, { type BriefCardProps } from "@/components/BriefCard";
-import { Search, Filter, Calendar } from "lucide-react";
+import { Search, Filter, Calendar as CalendarIcon } from "lucide-react";
 import { useLanguage, type Language } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNewsList, type PublicNewsItem } from "@/lib/api/news";
+import { Helmet } from "react-helmet-async";
+import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
+import TurndownService from "turndown";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 
 // 辅助函数：去除 HTML 标签
 const stripHtml = (html: string): string => {
@@ -29,11 +36,16 @@ const getTitle = (item: PublicNewsItem, language: Language): string => {
   return stripHtml(base).trim();
 };
 
+const turndownService = new TurndownService({ headingStyle: "atx" });
+
 // 辅助函数：获取对应语言的内容
-const getContent = (item: PublicNewsItem, language: Language): string => {
+const getContent = (item: PublicNewsItem, language: Language): { plain: string; markdown: string } => {
   const translation = language === "ko" ? item.translationKo : item.translationEn;
   const base = translation ?? item.content ?? "";
-  return (base ?? "").trim();
+  const content = (base ?? "").trim();
+  const plain = stripHtml(content);
+  const markdown = content.includes("<") ? turndownService.turndown(content) : content;
+  return { plain, markdown };
 };
 
 // 辅助函数：提取标签
@@ -41,6 +53,15 @@ const extractTags = (category: string | null | undefined): string[] => {
   if (!category) return [];
   return category.split(/[,|/]/).map((s) => s.trim()).filter((s) => s.length > 0);
 };
+
+const getLocalizedCategory = (item: PublicNewsItem, preferKoreanCategory: boolean) => {
+  if (preferKoreanCategory) {
+    return item["category-ko"] ?? item.category ?? item["category-en"] ?? null;
+  }
+  return item["category-en"] ?? item.category ?? item["category-ko"] ?? null;
+};
+
+const normalizeCategoryId = (value: string) => value.trim().toLowerCase().replace(/\s+/g, "-");
 
 // 辅助函数：格式化日期
 const formatDate = (isoDate: string): string => {
@@ -56,11 +77,20 @@ const formatDate = (isoDate: string): string => {
 // 辅助函数：获取推荐理由
 const getRecommendation = (item: PublicNewsItem, language: Language) => {
   const reason = language === "ko" ? item.aiReasonKo : item.aiReasonEn;
-  return reason ? reason.trim() : null;
+  const value = (reason ?? "").trim();
+  if (!value) {
+    return null;
+  }
+  const markdown = value.includes("<") ? turndownService.turndown(value) : value;
+  return markdown || null;
 };
 
 // 辅助函数：转换为 BriefCard 所需格式
-const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardProps | null => {
+const toBriefCardData = (
+  item: PublicNewsItem,
+  language: Language,
+  preferKoreanCategory: boolean,
+): BriefCardProps | null => {
   const slug = item.slug?.trim();
   if (!slug) {
     console.warn("Skipping news without slug", item.id);
@@ -68,9 +98,10 @@ const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardPro
   }
 
   const content = getContent(item, language);
-  const summary = content;
+  const summary = content.markdown;
   const title = getTitle(item, language);
   const recommendation = getRecommendation(item, language);
+  const categorySource = getLocalizedCategory(item, preferKoreanCategory);
 
   return {
     id: String(item.id),
@@ -78,25 +109,24 @@ const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardPro
     title: title || summary,
     summary,
     recommendation,
-    tags: extractTags(item.category),
+    tags: extractTags(categorySource),
     date: formatDate(item.isoDate),
+    isoDateValue: item.isoDate,
   };
 };
 
 export default function Archive() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
+  const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined);
   const { t, language } = useLanguage();
-
-  const categories = [
-    { id: "all", label: t.allCategories },
-    { id: "ai", label: t.categories.ai },
-    { id: "brand", label: t.categories.brand },
-    { id: "finance", label: t.categories.finance },
-    { id: "ipo", label: t.categories.ipo },
-    { id: "semiconductor", label: t.categories.semiconductor },
-    { id: "ev", label: t.categories.ev },
-  ];
+  const pageTitle = `${t.archive} | ${seoDefaults.siteName}`;
+  const description = formatMetaDescription(t.upgradeProArchive.description);
+  const canonicalUrl = buildCanonicalUrl("/archive");
+  const preferKoreanCategory = language === "ko";
 
   // 从真实 API 获取数据
   const { data: newsData, isLoading } = useQuery({
@@ -110,21 +140,59 @@ export default function Archive() {
 
     return newsData
       .filter((item) => hasTranslation(item, language))
-      .map((item) => toBriefCardData(item, language))
+      .map((item) => toBriefCardData(item, language, preferKoreanCategory))
       .filter((brief): brief is BriefCardProps => Boolean(brief));
-  }, [newsData, language]);
+  }, [newsData, language, preferKoreanCategory]);
 
   const filteredBriefs = useMemo(() => {
     return briefs.filter((brief) => {
       const matchesSearch = brief.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === "all" || brief.tags.some((tag) => tag.toLowerCase() === selectedCategory);
-      return matchesSearch && matchesCategory;
+      const matchesCategory =
+        selectedCategory === "all" || brief.tags.some((tag) => normalizeCategoryId(tag) === selectedCategory);
+      const isoDateOnly = (brief.isoDateValue || brief.date || "").slice(0, 10);
+      const matchesStart = startDate ? isoDateOnly >= startDate : true;
+      const matchesEnd = endDate ? isoDateOnly <= endDate : true;
+      const matchesDateRange = !startDate && !endDate ? true : Boolean(isoDateOnly) && matchesStart && matchesEnd;
+      return matchesSearch && matchesCategory && matchesDateRange;
     });
-  }, [briefs, searchQuery, selectedCategory]);
+  }, [briefs, searchQuery, selectedCategory, startDate, endDate]);
+
+  const categoryOptions = useMemo(() => {
+    const entries = new Map<string, string>();
+    briefs.forEach((brief) => {
+      brief.tags.forEach((tag) => {
+        if (!tag) return;
+        const id = normalizeCategoryId(tag);
+        if (!entries.has(id)) {
+          entries.set(id, tag);
+        }
+      });
+    });
+    return [
+      { id: "all", label: t.allCategories },
+      ...Array.from(entries.entries()).map(([id, label]) => ({ id, label })),
+    ];
+  }, [briefs, t.allCategories]);
 
   return (
-    <div className="min-h-screen py-12 px-4">
-      <div className="container mx-auto max-w-6xl">
+    <>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content={seoDefaults.siteName} />
+        <meta property="og:image" content={seoDefaults.ogImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={seoDefaults.ogImage} />
+      </Helmet>
+      <div className="min-h-screen py-12 px-4">
+        <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">{t.archive}</h1>
@@ -149,21 +217,80 @@ export default function Archive() {
             </div>
 
             {/* Date Range */}
-            <Button variant="outline" className="lg:w-auto">
-              <Calendar className="mr-2 h-4 w-4" />
-              Date Range
-            </Button>
+            <Popover
+              open={isDateRangeOpen}
+              onOpenChange={(open) => {
+                setIsDateRangeOpen(open);
+                if (open) {
+                  setPendingRange({
+                    from: startDate ? new Date(startDate) : undefined,
+                    to: endDate ? new Date(endDate) : undefined,
+                  });
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start min-w-[220px]">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate && endDate
+                    ? `${startDate} → ${endDate}`
+                    : startDate
+                      ? `From ${startDate}`
+                      : endDate
+                        ? `Until ${endDate}`
+                        : "Date Range"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-4" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  numberOfMonths={2}
+                  selected={pendingRange}
+                  onSelect={(range) => setPendingRange(range)}
+                />
+                <div className="mt-4 flex items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setPendingRange(undefined);
+                      setStartDate("");
+                      setEndDate("");
+                      setIsDateRangeOpen(false);
+                    }}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const from = pendingRange?.from ? format(pendingRange.from, "yyyy-MM-dd") : "";
+                      const to = pendingRange?.to ? format(pendingRange.to, "yyyy-MM-dd") : "";
+                      setStartDate(from);
+                      setEndDate(to);
+                      setIsDateRangeOpen(false);
+                    }}
+                    disabled={!pendingRange?.from && !pendingRange?.to}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
-            {/* Filter */}
-            <Button variant="outline" className="lg:w-auto">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
+            {/* Filter button hidden for now */}
+            <div className="hidden">
+              <Button variant="outline" className="lg:w-auto">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
           </div>
 
           {/* Category Tabs */}
           <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
+            {categoryOptions.map((category) => (
               <Badge
                 key={category.id}
                 variant={selectedCategory === category.id ? "default" : "secondary"}
@@ -206,6 +333,8 @@ export default function Archive() {
             <Button variant="outline" onClick={() => {
               setSearchQuery("");
               setSelectedCategory("all");
+              setStartDate("");
+              setEndDate("");
             }}>
               Reset Filters
             </Button>
@@ -232,6 +361,7 @@ export default function Archive() {
           </Button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -10,11 +10,39 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchNewsBySlug, fetchNewsList, type PublicNewsItem } from "@/lib/api/news";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import { Helmet } from "react-helmet-async";
+import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
 
 const stripHtml = (html: string): string => {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || "";
+};
+
+const htmlLikePattern = /<\/?[a-z][^>]*>/i;
+
+const richTextSanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...(defaultSchema.attributes || {}),
+    "*": [
+      ...((defaultSchema.attributes && defaultSchema.attributes["*"]) || []),
+      ["style", /^[-:,;#%\.\w\s()]+$/i],
+      ["className", /^[-_\w\s]+$/],
+      ["align", /^(left|right|center|justify)$/],
+    ],
+    p: [
+      ...((defaultSchema.attributes && defaultSchema.attributes.p) || []),
+      ["style", /^[-:,;#%\.\w\s()]+$/i],
+    ],
+    span: [
+      ...((defaultSchema.attributes && defaultSchema.attributes.span) || []),
+      ["style", /^[-:,;#%\.\w\s()]+$/i],
+      ["className", /^[-_\w\s]+$/],
+    ],
+  },
 };
 
 export default function Article() {
@@ -59,15 +87,22 @@ export default function Article() {
     const canonicalSlug = (data.slug ?? slug ?? "").trim();
     const titleCandidate = language === "ko" ? data.titleKo ?? data.titleEn : data.titleEn ?? data.titleKo;
     const contentCandidate = language === "ko" ? data.translationKo ?? data.translationEn ?? data.content : data.translationEn ?? data.translationKo ?? data.content;
-    const tags = (data.category ?? "")
+    const categorySource = language === "ko"
+      ? data["category-ko"] ?? data.category ?? data["category-en"]
+      : data["category-en"] ?? data.category ?? data["category-ko"];
+    const tags = (categorySource ?? "")
       .split(/[,|/]/)
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
     const rawContent = (contentCandidate || "").trim();
-    let normalizedMarkdown = rawContent.replace(/^(#+)(?![\s#])/gm, '$1 ');
-    normalizedMarkdown = normalizedMarkdown.replace(new RegExp('^(#{1,6}\\s[^\\n]+)(?!\\n)', 'gm'), '$1\n');
-    const plainContent = stripHtml(normalizedMarkdown || "").trim();
+    const hasHtml = htmlLikePattern.test(rawContent);
+    let normalizedContent = rawContent;
+    if (!hasHtml) {
+      normalizedContent = normalizedContent.replace(/^(#+)(?![\s#])/gm, "$1 ");
+      normalizedContent = normalizedContent.replace(new RegExp("^(#{1,6}\\s[^\\n]+)(?!\\n)", "gm"), "$1\n");
+    }
+    const plainContent = stripHtml(normalizedContent || "").trim();
 
     return {
       id: String(data.id),
@@ -75,8 +110,8 @@ export default function Article() {
       title: stripHtml(titleCandidate || data.title || data.link || "").trim(),
       date: data.isoDate,
       tags,
-      content: plainContent,
-      contentMarkdown: normalizedMarkdown,
+      contentPlain: plainContent,
+      contentRich: normalizedContent,
       recommendation: null as string | null,
     };
   }, [data, language, slug]);
@@ -116,15 +151,39 @@ export default function Article() {
       }));
   }, [relatedNewsData, data, language, slug]);
 
-  const articlePlainContent = article?.content ?? "";
-  const articleMarkdownContent = article?.contentMarkdown ?? "";
-  const previewPlainContent = articlePlainContent.substring(0, 500);
-  const previewMarkdownContent = articleMarkdownContent.substring(0, 500);
-  const shouldTruncateContent = articlePlainContent.length > 500 || articleMarkdownContent.length > 500;
+  const articlePlainContent = article?.contentPlain ?? "";
+  const articleRichContent = article?.contentRich ?? "";
+  const previewLimit = 500;
+  const shouldTruncateContent = articlePlainContent.length > previewLimit;
   const shouldShowPaywall = !isProSubscriber;
+  const canonicalUrl = buildCanonicalUrl(article ? `/article/${article.slug}` : "/archive");
+  const pageTitle = article?.title ? `${article.title} | ${seoDefaults.siteName}` : seoDefaults.title;
+  const descriptionSource = shouldShowPaywall ? articlePlainContent.substring(0, previewLimit) : articlePlainContent;
+  const description = formatMetaDescription(descriptionSource);
 
   return (
-    <div className="min-h-screen py-12 px-4">
+    <>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content={article ? "article" : "website"} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content={seoDefaults.siteName} />
+        <meta property="og:image" content={seoDefaults.ogImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={seoDefaults.ogImage} />
+        <meta name="keywords" content={(article?.tags || []).join(", ")} />
+        {article?.date && <meta property="article:published_time" content={article.date} />}
+        {article?.tags?.map((tag) => (
+          <meta key={tag} property="article:tag" content={tag} />
+        ))}
+      </Helmet>
+      <div className="min-h-screen py-12 px-4">
       <div className="container mx-auto max-w-4xl">
         {/* Back Button */}
         <Link to="/archive" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8 transition-colors">
@@ -168,26 +227,22 @@ export default function Article() {
           {/* Content with subscription check */}
           {article && (
             <div className="relative min-h-[300px]">
-              {isProSubscriber ? (
+              <div
+                className={`prose prose-lg max-w-none text-foreground relative ${
+                  shouldShowPaywall && shouldTruncateContent ? "max-h-[600px] overflow-hidden" : ""
+                }`}
+              >
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  className="prose prose-lg max-w-none text-foreground relative"
+                  rehypePlugins={[rehypeRaw, [rehypeSanitize, richTextSanitizeSchema]]}
+                  className="prose prose-lg max-w-none text-foreground"
                 >
-                  {articleMarkdownContent}
+                  {articleRichContent || articlePlainContent}
                 </ReactMarkdown>
-              ) : (
-                <>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    className="prose prose-lg max-w-none text-foreground relative"
-                  >
-                    {previewMarkdownContent || previewPlainContent}
-                  </ReactMarkdown>
-                  {shouldTruncateContent && (
-                    <p className="text-muted-foreground mt-2">...</p>
-                  )}
-                </>
-              )}
+                {shouldShowPaywall && shouldTruncateContent && (
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-card to-transparent" />
+                )}
+              </div>
 
               {shouldShowPaywall && (
                 <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center pointer-events-none z-10">
@@ -198,7 +253,6 @@ export default function Article() {
                       <Button variant="cta" size="lg" asChild className="w-full">
                         <Link to="/pricing">{t.subscribeButton}</Link>
                       </Button>
-                      {/* Only show "Sign In" button if user is NOT logged in */}
                       {!user && (
                         <Button variant="outline" size="lg" asChild className="w-full">
                           <Link to="/auth">{t.alreadySubscribed}</Link>
@@ -241,6 +295,7 @@ export default function Article() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

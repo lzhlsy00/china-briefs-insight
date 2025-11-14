@@ -8,6 +8,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Helmet } from "react-helmet-async";
+import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
 
 export default function Pricing() {
   const { language, t, countryCode } = useLanguage();
@@ -16,6 +18,9 @@ export default function Pricing() {
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const isKoreanRegion = countryCode === "KR";
+  const pageTitle = `${t.pricingTitle} | ${seoDefaults.siteName}`;
+  const description = formatMetaDescription(t.pricingSubtitle);
+  const canonicalUrl = buildCanonicalUrl("/pricing");
 
   const features = [
     t.features.dailyBriefs,
@@ -79,6 +84,21 @@ export default function Pricing() {
 
   return (
     <>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content={seoDefaults.siteName} />
+        <meta property="og:image" content={seoDefaults.ogImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={seoDefaults.ogImage} />
+      </Helmet>
       <div className="min-h-screen py-12 px-4">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}

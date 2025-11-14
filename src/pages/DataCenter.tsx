@@ -4,9 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Star, TrendingUp } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
 
 export default function DataCenter() {
   const { t } = useLanguage();
+  const pageTitle = `${t.dataCenter} | ${seoDefaults.siteName}`;
+  const description = formatMetaDescription(t.upgradeProDataCenter.description);
+  const canonicalUrl = buildCanonicalUrl("/data-center");
 
   const reports = [
     {
@@ -72,7 +77,23 @@ export default function DataCenter() {
   ];
 
   return (
-    <div className="min-h-screen py-12 px-4">
+    <>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content={seoDefaults.siteName} />
+        <meta property="og:image" content={seoDefaults.ogImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={seoDefaults.ogImage} />
+      </Helmet>
+      <div className="min-h-screen py-12 px-4">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-12 text-center">
@@ -191,6 +212,6 @@ export default function DataCenter() {
           <p className="text-sm opacity-75 mt-4">{t.trustBadges.trial} · {t.trustBadges.cancelAnytime}</p>
         </div>
       </div>
-    </div>
+    </>
   );
 }

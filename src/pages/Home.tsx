@@ -8,6 +8,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchHighlightedNews, type PublicNewsItem } from "@/lib/api/news";
 import type { Language } from "@/lib/translations";
+import { Helmet } from "react-helmet-async";
+import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
+import TurndownService from "turndown";
 
 const formatDate = (isoDate: string, language: Language) => {
   try {
@@ -44,11 +47,28 @@ const stripHtml = (html: string): string => {
   return tmp.textContent || tmp.innerText || "";
 };
 
+const turndownService = new TurndownService({ headingStyle: "atx" });
+
+const toMarkdown = (input?: string | null) => {
+  const value = (input ?? "").trim();
+  if (!value) {
+    return value;
+  }
+  return value.includes("<") ? turndownService.turndown(value) : value;
+};
+
+const getLocalizedCategory = (item: PublicNewsItem, preferKoreanCategory: boolean) => {
+  if (preferKoreanCategory) {
+    return item["category-ko"] ?? item.category ?? item["category-en"] ?? null;
+  }
+  return item["category-en"] ?? item.category ?? item["category-ko"] ?? null;
+};
+
 const createSummary = (item: PublicNewsItem, language: Language) => {
   const translation = language === "ko" ? item.translationKo : item.translationEn;
   const fallbackTranslation = language === "ko" ? item.translationEn : item.translationKo;
   const base = translation ?? fallbackTranslation ?? item.content ?? "";
-  return (base ?? "").trim();
+  return toMarkdown(base);
 };
 
 const createTitle = (item: PublicNewsItem, language: Language) => {
@@ -66,10 +86,15 @@ const hasTranslation = (item: PublicNewsItem, language: Language): boolean => {
 
 const createRecommendation = (item: PublicNewsItem, language: Language) => {
   const reason = language === "ko" ? item.aiReasonKo : item.aiReasonEn;
-  return reason ? reason.trim() : null;
+  const markdown = toMarkdown(reason);
+  return markdown || null;
 };
 
-const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardProps | null => {
+const toBriefCardData = (
+  item: PublicNewsItem,
+  language: Language,
+  preferKoreanCategory: boolean,
+): BriefCardProps | null => {
   const slug = item.slug?.trim();
   if (!slug) {
     console.warn("Skipping news without slug", item.id);
@@ -79,6 +104,7 @@ const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardPro
   const summary = createSummary(item, language);
   const recommendation = createRecommendation(item, language);
   const titleCandidate = createTitle(item, language);
+  const categorySource = getLocalizedCategory(item, preferKoreanCategory);
 
   return {
     id: String(item.id),
@@ -86,8 +112,9 @@ const toBriefCardData = (item: PublicNewsItem, language: Language): BriefCardPro
     title: titleCandidate || summary,
     summary,
     recommendation,
-    tags: extractTags(item.category),
+    tags: extractTags(categorySource),
     date: formatDate(item.isoDate, language),
+    isoDateValue: item.isoDate,
   };
 };
 
@@ -109,6 +136,12 @@ const highlightSkeletons = Array.from({ length: 3 }).map((_, index) => (
 
 export default function Home() {
   const { t, language } = useLanguage();
+  const preferKoreanCategory = language === "ko";
+  const heroHeadline = t.hero.title;
+  const subtitle = t.hero.subtitle;
+  const pageTitle = `${heroHeadline} | ${seoDefaults.siteName}`;
+  const description = formatMetaDescription(subtitle);
+  const canonicalUrl = buildCanonicalUrl("/");
 
   const {
     data: highlightedNews,
@@ -127,12 +160,28 @@ export default function Home() {
     return highlightedNews
       .filter((item) => hasTranslation(item, language))
       .slice(0, 3)
-      .map((item) => toBriefCardData(item, language))
+      .map((item) => toBriefCardData(item, language, preferKoreanCategory))
       .filter((brief): brief is BriefCardProps => Boolean(brief));
-  }, [highlightedNews, language]);
+  }, [highlightedNews, language, preferKoreanCategory]);
 
   return (
-    <div className="min-h-screen">
+    <>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content={seoDefaults.siteName} />
+        <meta property="og:image" content={seoDefaults.ogImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={seoDefaults.ogImage} />
+      </Helmet>
+      <div className="min-h-screen">
       {/* Hero Section */}
       <section className="bg-gradient-hero pt-20 pb-32 px-4">
         <div className="container mx-auto max-w-5xl text-center">
@@ -313,6 +362,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

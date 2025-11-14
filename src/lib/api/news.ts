@@ -15,6 +15,8 @@ export interface PublicNewsItem {
   titleKo: string | null;
   titleEn: string | null;
   category: string | null;
+  "category-en"?: string | null;
+  "category-ko"?: string | null;
 }
 
 export interface PublicNewsPagination {
