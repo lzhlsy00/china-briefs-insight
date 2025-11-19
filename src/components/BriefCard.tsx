@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import MarkdownText from "@/components/MarkdownText";
+import { buildArticlePath } from "@/lib/articleLinks";
 
 export interface BriefCardProps {
   id: string;
@@ -18,17 +19,18 @@ export interface BriefCardProps {
 
 export default function BriefCard({
   id,
-  slug,
+  slug: _slug,
   title,
   summary,
   recommendation,
   tags = [],
   date,
 }: BriefCardProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const articlePath = buildArticlePath({ id: Number(id), title }, language);
 
   return (
-    <Link to={`/article/${slug}`}>
+    <Link to={articlePath}>
       <Card className="group hover:shadow-card-hover transition-all duration-300 border-border bg-card rounded-2xl overflow-hidden cursor-pointer">
         <CardHeader className="pb-3">
           <div className="mb-2">

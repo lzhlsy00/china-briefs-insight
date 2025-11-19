@@ -8,7 +8,7 @@ import { Helmet } from "react-helmet-async";
 import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
 
 export default function DataCenter() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const pageTitle = `${t.dataCenter} | ${seoDefaults.siteName}`;
   const description = formatMetaDescription(t.upgradeProDataCenter.description);
   const canonicalUrl = buildCanonicalUrl("/data-center");
@@ -114,7 +114,7 @@ export default function DataCenter() {
             {reports
               .filter((report) => report.featured)
               .map((report) => (
-                <Link key={report.slug} to={`/article/${report.slug}`}>
+                <Link key={report.slug} to={`/${language === "ko" ? "ko" : "en"}/article/${report.id}/${report.slug}`}>
                   <Card className="group hover:shadow-card-hover transition-all duration-300 border-accent/20 bg-card rounded-2xl h-full"
                   >
                   <CardHeader>
@@ -160,7 +160,7 @@ export default function DataCenter() {
             {reports
               .filter((report) => !report.featured)
               .map((report) => (
-                <Link key={report.slug} to={`/article/${report.slug}`}>
+                <Link key={report.slug} to={`/${language === "ko" ? "ko" : "en"}/article/${report.id}/${report.slug}`}>
                   <Card className="group hover:shadow-card-hover transition-all duration-300 border-border bg-card rounded-2xl h-full"
                   >
                   <CardHeader>

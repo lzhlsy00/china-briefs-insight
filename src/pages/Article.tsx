@@ -4,16 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, Tag, Lock } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import type { Language } from "@/lib/translations";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
-import { fetchNewsBySlug, fetchNewsList, type PublicNewsItem } from "@/lib/api/news";
+import { fetchNewsBySlug, fetchNewsById, fetchNewsList, type PublicNewsItem } from "@/lib/api/news";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { Helmet } from "react-helmet-async";
 import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
+import { buildArticlePath } from "@/lib/articleLinks";
 
 const stripHtml = (html: string): string => {
   const tmp = document.createElement("div");
@@ -46,17 +46,33 @@ const richTextSanitizeSchema = {
 };
 
 export default function Article() {
-  const { slug } = useParams<{ slug: string }>();
+  const params = useParams<{ slug?: string; locale?: string; id?: string; title?: string }>();
+  const slug = params.slug;
+  const localeParam = params.locale;
+  const idParam = params.id;
   const { t, language } = useLanguage();
   const { user, subscription } = useAuth();
   const isProSubscriber = subscription.subscribed;
 
+  const normalizedLocaleParam = localeParam === "ko" ? "ko" : localeParam === "en" ? "en" : null;
+  const numericId = idParam ? Number(idParam) : null;
+  const canFetchById = Boolean(normalizedLocaleParam && numericId && Number.isFinite(numericId));
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["article", slug],
-    enabled: Boolean(slug),
+    queryKey: ["article", canFetchById ? `id:${numericId}` : slug ?? ""],
+    enabled: Boolean(canFetchById ? numericId : slug),
     queryFn: async () => {
-      if (!slug) return null;
-      return fetchNewsBySlug(slug);
+      if (canFetchById && numericId) {
+        const result = await fetchNewsById(numericId);
+        if (result) {
+          return result;
+        }
+      }
+
+      if (slug) {
+        return fetchNewsBySlug(slug);
+      }
+      return null;
     },
   });
 
@@ -104,6 +120,16 @@ export default function Article() {
     }
     const plainContent = stripHtml(normalizedContent || "").trim();
 
+    const path = buildArticlePath(
+      {
+        id: data.id,
+        title: stripHtml(data.title || ""),
+        titleEn: data.titleEn,
+        titleKo: data.titleKo,
+      },
+      language
+    );
+
     return {
       id: String(data.id),
       slug: canonicalSlug,
@@ -113,6 +139,7 @@ export default function Article() {
       contentPlain: plainContent,
       contentRich: normalizedContent,
       recommendation: null as string | null,
+      path,
     };
   }, [data, language, slug]);
 
@@ -121,33 +148,23 @@ export default function Article() {
     if (!relatedNewsData || !data) return [];
 
     const currentSlug = (data.slug ?? slug ?? "").trim();
-    const getSlug = (item: PublicNewsItem) => item.slug?.trim() ?? null;
-
-    // 检查是否同时有韩文和英文标题
-    const hasBothTitles = (item: PublicNewsItem) => {
-      return Boolean(item.titleKo && item.titleEn);
-    };
-
-    const getTitle = (item: PublicNewsItem, lang: Language) => {
-      if (lang === "ko") {
-        return stripHtml(item.titleKo || item.title).trim();
-      } else {
-        return stripHtml(item.titleEn || item.title).trim();
-      }
-    };
-
     return relatedNewsData
-      .filter((item) => {
-        const relatedSlug = getSlug(item);
-        return Boolean(relatedSlug) && relatedSlug !== currentSlug;
-      })
-      .filter((item) => hasBothTitles(item)) // 必须同时有韩文和英文标题
+      .filter((item) => Boolean(item.titleKo && item.titleEn))
+      .filter((item) => item.id !== data.id && (item.slug?.trim() ?? null) !== currentSlug)
       .slice(0, 4) // 限制4篇
       .map((item) => ({
         id: item.id,
-        slug: getSlug(item) as string,
-        title: getTitle(item, language),
+        title: language === "ko" ? stripHtml(item.titleKo || item.title).trim() : stripHtml(item.titleEn || item.title).trim(),
         date: item.isoDate,
+        path: buildArticlePath(
+          {
+            id: item.id,
+            title: stripHtml(item.title),
+            titleEn: item.titleEn,
+            titleKo: item.titleKo,
+          },
+          language
+        ),
       }));
   }, [relatedNewsData, data, language, slug]);
 
@@ -156,7 +173,7 @@ export default function Article() {
   const previewLimit = 500;
   const shouldTruncateContent = articlePlainContent.length > previewLimit;
   const shouldShowPaywall = !isProSubscriber;
-  const canonicalUrl = buildCanonicalUrl(article ? `/article/${article.slug}` : "/archive");
+  const canonicalUrl = buildCanonicalUrl(article ? article.path : "/archive");
   const pageTitle = article?.title ? `${article.title} | ${seoDefaults.siteName}` : seoDefaults.title;
   const descriptionSource = shouldShowPaywall ? articlePlainContent.substring(0, previewLimit) : articlePlainContent;
   const description = formatMetaDescription(descriptionSource);
@@ -284,7 +301,7 @@ export default function Article() {
               {relatedArticles.map((related) => (
                 <Link
                   key={related.slug}
-                  to={`/article/${related.slug}`}
+                  to={related.path}
                   className="bg-card rounded-xl border border-border p-6 hover:shadow-card transition-shadow"
                 >
                   <h3 className="font-semibold text-foreground mb-2">{related.title}</h3>

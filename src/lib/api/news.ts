@@ -119,3 +119,24 @@ export const fetchNewsBySlug = async (slugOrId: number | string) => {
 
   return data.data;
 };
+
+export const fetchNewsById = async (id: number | string) => {
+  const identifier = encodeURIComponent(String(id));
+  const response = await fetch(`${apiBaseUrl}/public/news/by-id/${identifier}`);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+
+    throw new Error(`Failed to load article (HTTP ${response.status})`);
+  }
+
+  const data = (await response.json()) as PublicNewsDetailResponse;
+
+  if (!data.success) {
+    throw new Error(data.message || "Failed to load article");
+  }
+
+  return data.data;
+};
