@@ -270,7 +270,7 @@ export default function Article() {
             <div className="mt-8 flex items-center justify-center gap-3 py-6 border-t border-b border-border">
               <Lock className="h-5 w-5 text-muted-foreground" />
               <span className="text-muted-foreground text-sm">
-                {language === "ko" ? "구독 후 전체 내용을 확인하세요" : "Subscribe to read the full article"}
+                {t.subscribeToReadFull}
               </span>
             </div>
           )}

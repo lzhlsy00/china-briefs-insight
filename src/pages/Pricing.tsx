@@ -12,12 +12,12 @@ import { Helmet } from "react-helmet-async";
 import { buildCanonicalUrl, formatMetaDescription, seoDefaults } from "@/lib/seo";
 
 export default function Pricing() {
-  const { language, t, countryCode } = useLanguage();
+  const { language, t } = useLanguage();
   const { user, session, subscription, refreshSubscription } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const isKoreanRegion = countryCode === "KR";
+  const isKoreanPricing = language === "ko";
   const pageTitle = `${t.pricingTitle} | ${seoDefaults.siteName}`;
   const description = formatMetaDescription(t.pricingSubtitle);
   const canonicalUrl = buildCanonicalUrl("/pricing");
@@ -30,28 +30,34 @@ export default function Pricing() {
     t.features.prioritySupport,
   ];
 
-  const price = isKoreanRegion ? "₩5,900" : "$3.99";
-  const originalPrice = isKoreanRegion ? "₩11,800" : "$7.98";
+  const price = isKoreanPricing ? "₩5,900" : "$3.99";
+  const originalPrice = isKoreanPricing ? "₩11,800" : "$7.98";
+  const trialEligible = !subscription.hasUsedTrial;
+  const ctaLabel = subscription.subscribed
+    ? t.subscriptionDialog.renew
+    : trialEligible
+      ? t.startTrial
+      : t.subscribeNowCta;
 
   useEffect(() => {
     const success = searchParams.get("success");
     const canceled = searchParams.get("canceled");
 
     if (success === "true") {
-      toast.success("결제가 완료되었습니다! 구독 상태를 확인 중입니다...");
+      toast.success(t.payment.completed);
       setTimeout(() => {
         refreshSubscription();
       }, 2000);
       navigate("/pricing", { replace: true });
     } else if (canceled === "true") {
-      toast.error("결제가 취소되었습니다.");
+      toast.error(t.payment.canceled);
       navigate("/pricing", { replace: true });
     }
-  }, [searchParams, refreshSubscription, navigate]);
+  }, [searchParams, refreshSubscription, navigate, t]);
 
   const handleSubscribe = async () => {
     if (!user) {
-      toast.error("로그인이 필요합니다.");
+      toast.error(t.payment.loginRequired);
       navigate("/auth");
       return;
     }
@@ -63,17 +69,24 @@ export default function Pricing() {
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: {
-          region: isKoreanRegion ? "KR" : "DEFAULT",
+          region: isKoreanPricing ? "KR" : "DEFAULT",
+          locale: isKoreanPricing ? "ko" : "en",
         },
       });
 
       if (error) throw error;
+      
+      // 检查后端返回的错误
+      if (data?.error === "CURRENCY_MISMATCH") {
+        toast.error(t.payment.currencyMismatch);
+        return;
+      }
 
       if (data?.url) {
         window.open(data.url, "_blank");
       }
     } catch (error: any) {
-      toast.error(error.message || "구독 처리 중 오류가 발생했습니다.");
+      toast.error(error.message || t.payment.processingError);
     } finally {
       setIsLoading(false);
     }
@@ -143,18 +156,16 @@ export default function Pricing() {
             </CardContent>
 
             <CardFooter className="flex flex-col gap-2">
-              <Button 
-                variant="cta" 
-                size="lg" 
-                className="w-full" 
+              <Button
+                variant="cta"
+                size="lg"
+                className="w-full"
                 onClick={handleSubscribe}
                 disabled={isLoading}
               >
-                {isLoading 
-                  ? (language === "ko" ? "처리 중..." : "Processing...") 
-                  : subscription.subscribed 
-                  ? t.subscriptionDialog.renew 
-                  : t.startTrial}
+                {isLoading
+                  ? t.payment.processing
+                  : ctaLabel}
               </Button>
               {subscription.subscribed && (
                 <div className="text-sm text-center text-muted-foreground">
@@ -163,7 +174,7 @@ export default function Pricing() {
                   </Badge>
                   {subscription.subscriptionEnd && (
                     <p className="mt-2">
-                      {(language === "ko" ? "다음 결제일:" : "Next billing date:") + " " + new Date(subscription.subscriptionEnd).toLocaleDateString(language === "ko" ? "ko-KR" : "en-US")}
+                      {t.payment.nextBillingDate + " " + new Date(subscription.subscriptionEnd).toLocaleDateString(language === "ko" ? "ko-KR" : "en-US")}
                     </p>
                   )}
                 </div>

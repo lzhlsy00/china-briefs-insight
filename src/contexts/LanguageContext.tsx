@@ -39,10 +39,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           return;
         }
         setCountryCode(detectedCountry);
-        if (userSelectedLanguage.current) {
-          return;
+        if (!userSelectedLanguage.current) {
+          setLanguageState(detectedCountry === "KR" ? "ko" : "en");
         }
-        setLanguageState(detectedCountry === "KR" ? "ko" : "en");
       } catch (_error) {
         if (isActive) {
           setCountryCode(null);

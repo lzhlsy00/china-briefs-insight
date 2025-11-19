@@ -112,6 +112,7 @@ export const translations = {
     },
     
     startTrial: "7일 무료 체험",
+    subscribeNowCta: "바로 구독하기",
     noCreditCard: "언제든 취소 가능",
     
     trustBadges: {
@@ -153,6 +154,7 @@ export const translations = {
     subscribeButton: "구독하고 계속 읽기",
     alreadySubscribed: "로그인하기",
     relatedArticles: "관련 기사",
+    subscribeToReadFull: "구독 후 전체 내용을 확인하세요",
     
     // Brief Card
     whyRecommend: "추천 이유",
@@ -246,6 +248,17 @@ export const translations = {
     },
     
     allRightsReserved: "모든 권리 보유",
+    
+    // Payment/Checkout Messages
+    payment: {
+      completed: "결제가 완료되었습니다! 구독 상태를 확인 중입니다...",
+      canceled: "결제가 취소되었습니다.",
+      loginRequired: "로그인이 필요합니다.",
+      processingError: "구독 처리 중 오류가 발생했습니다.",
+      processing: "처리 중...",
+      nextBillingDate: "다음 결제일:",
+      currencyMismatch: "다른 통화로 이미 구독 중입니다. 통화를 변경하려면 먼저 현재 구독을 취소해 주세요.",
+    },
   },
   
   en: {
@@ -361,6 +374,7 @@ export const translations = {
     },
     
     startTrial: "7 days free trial",
+    subscribeNowCta: "Subscribe now",
     noCreditCard: "Cancel anytime",
     
     trustBadges: {
@@ -402,6 +416,7 @@ export const translations = {
     subscribeButton: "Subscribe & Continue Reading",
     alreadySubscribed: "Sign In",
     relatedArticles: "Related Articles",
+    subscribeToReadFull: "Subscribe to read the full article",
     
     // Brief Card
     whyRecommend: "Why we recommend",
@@ -495,6 +510,17 @@ export const translations = {
     },
     
     allRightsReserved: "All rights reserved",
+    
+    // Payment/Checkout Messages
+    payment: {
+      completed: "Payment completed! Checking subscription status...",
+      canceled: "Payment canceled.",
+      loginRequired: "Login required.",
+      processingError: "An error occurred while processing subscription.",
+      processing: "Processing...",
+      nextBillingDate: "Next billing date:",
+      currencyMismatch: "You have an active subscription in a different currency. Please cancel your current subscription first to change currencies.",
+    },
   },
 };
 

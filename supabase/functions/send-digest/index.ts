@@ -86,7 +86,7 @@ serve(async (req) => {
     const { data: subscribers, error: subscriberError } = await supabase
       .from("user_profiles")
       .select("email")
-      .eq("subscription_status", "pro")
+      .in("subscription_status", ["pro", "trial"])
       .not("email", "is", null);
 
     if (subscriberError) {

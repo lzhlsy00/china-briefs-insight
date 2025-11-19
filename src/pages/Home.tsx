@@ -5,6 +5,7 @@ import BriefCard, { type BriefCardProps } from "@/components/BriefCard";
 import { Check, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchHighlightedNews, type PublicNewsItem } from "@/lib/api/news";
 import type { Language } from "@/lib/translations";
@@ -136,12 +137,19 @@ const highlightSkeletons = Array.from({ length: 3 }).map((_, index) => (
 
 export default function Home() {
   const { t, language } = useLanguage();
+  const { subscription } = useAuth();
   const preferKoreanCategory = language === "ko";
   const heroHeadline = t.hero.title;
   const subtitle = t.hero.subtitle;
   const pageTitle = `${heroHeadline} | ${seoDefaults.siteName}`;
   const description = formatMetaDescription(subtitle);
   const canonicalUrl = buildCanonicalUrl("/");
+  const trialEligible = !subscription.hasUsedTrial;
+  const pricingTeaserCtaLabel = subscription.subscribed
+    ? t.subscriptionDialog.renew
+    : trialEligible
+      ? t.startTrial
+      : t.subscribeNowCta;
 
   const {
     data: highlightedNews,
@@ -320,7 +328,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button variant="cta" size="xl" asChild>
                 <Link to="/pricing">
-                  {t.startTrial}
+                  {pricingTeaserCtaLabel}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>

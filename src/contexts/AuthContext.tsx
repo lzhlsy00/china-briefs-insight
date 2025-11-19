@@ -9,6 +9,7 @@ interface SubscriptionStatus {
   subscribed: boolean;
   productId: string | null;
   subscriptionEnd: string | null;
+  hasUsedTrial: boolean;
 }
 
 interface AuthContextType {
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     subscribed: false,
     productId: null,
     subscriptionEnd: null,
+    hasUsedTrial: false,
   });
   const [isLoading, setIsLoading] = useState(true);
   const ensuredUserIdRef = useRef<string | null>(null);
@@ -62,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSubscription = async (userSession: Session | null) => {
     if (!userSession) {
-      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
+      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
       return;
     }
 
@@ -81,11 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscribed: data.subscribed || false,
         productId: data.product_id || null,
         subscriptionEnd: data.subscription_end || null,
+        hasUsedTrial: Boolean(data.has_used_trial),
       });
     } catch (error) {
       console.error("Error checking subscription:", error);
       // Set default unsubscribed state on error (e.g., Stripe not configured)
-      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
+      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
     }
   };
 
@@ -107,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             checkSubscription(currentSession);
           }, 0);
         } else {
-          setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
+          setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
         }
       }
     );
@@ -245,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut({ scope: 'global' });
       
       // Clear local state immediately
-      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
+      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
       setUser(null);
       setSession(null);
       ensuredUserIdRef.current = null;

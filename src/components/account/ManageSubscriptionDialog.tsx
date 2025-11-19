@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import { Loader2, RefreshCw, ShieldOff } from "lucide-react";
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -50,8 +49,6 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 export function ManageSubscriptionDialog({ open, onOpenChange }: ManageSubscriptionDialogProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
   const { language, t } = useLanguage();
   const { user, subscription, refreshSubscription } = useAuth();
 
@@ -90,13 +87,6 @@ export function ManageSubscriptionDialog({ open, onOpenChange }: ManageSubscript
       loadProfile();
     }
   }, [open, loadProfile]);
-
-  const handleRenew = useCallback(() => {
-    onOpenChange(false);
-    if (location.pathname !== "/pricing") {
-      navigate("/pricing");
-    }
-  }, [location.pathname, navigate, onOpenChange]);
 
   const handleCancelSubscription = useCallback(async () => {
     if (!user) {
@@ -232,7 +222,7 @@ export function ManageSubscriptionDialog({ open, onOpenChange }: ManageSubscript
             <RefreshCw className="mr-2 h-4 w-4" />
             {t.subscriptionDialog.refresh}
           </Button>
-          {isSubscribed ? (
+          {isSubscribed && (
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogTrigger asChild>
@@ -276,14 +266,7 @@ export function ManageSubscriptionDialog({ open, onOpenChange }: ManageSubscript
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button size="sm" onClick={handleRenew} className="w-full sm:w-auto">
-                {t.subscriptionDialog.renew}
-              </Button>
             </div>
-          ) : (
-            <Button size="sm" onClick={handleRenew} className="w-full sm:w-auto">
-              {t.subscriptionDialog.renew}
-            </Button>
           )}
         </DialogFooter>
       </DialogContent>

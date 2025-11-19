@@ -49,6 +49,32 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    const profileClient = adminClient ?? createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+
+    let hasUsedTrial = false;
+    try {
+      const { data: profileData, error: profileError } = await profileClient
+        .from("user_profiles")
+        .select("has_used_trial")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        logStep("Failed to load profile for trial flag", { message: profileError.message });
+      }
+
+      hasUsedTrial = Boolean(profileData?.has_used_trial);
+      logStep("Resolved trial flag", { hasUsedTrial });
+    } catch (profileLoadError) {
+      logStep("ERROR loading profile for trial flag", { message: String(profileLoadError) });
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
@@ -108,20 +134,35 @@ serve(async (req) => {
 
     const subscriptionStatus = hasActiveSub ? (isTrialing ? "trial" : "pro") : "free";
 
+    const shouldMarkTrialUsed = hasActiveSub && !hasUsedTrial;
+
+    if (shouldMarkTrialUsed) {
+      logStep("Marking trial as used due to active subscription", { userId: user.id });
+    }
+
     if (adminClient) {
       try {
+        const updatePayload: Record<string, unknown> = {
+          subscription_status: subscriptionStatus,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (shouldMarkTrialUsed) {
+          updatePayload.has_used_trial = true;
+        }
+
         const { error: profileError } = await adminClient
           .from("user_profiles")
-          .update({
-            subscription_status: subscriptionStatus,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq("id", user.id);
 
         if (profileError) {
           logStep("Failed to sync user profile subscription", { userId: user.id, message: profileError.message });
         } else {
           logStep("Synced user profile subscription", { userId: user.id, subscriptionStatus, subscriptionEnd });
+          if (shouldMarkTrialUsed) {
+            hasUsedTrial = true;
+          }
         }
       } catch (profileSyncError) {
         logStep("ERROR syncing user profile subscription", { userId: user.id, message: String(profileSyncError) });
@@ -135,6 +176,7 @@ serve(async (req) => {
       trialing: isTrialing,
       product_id: productId,
       subscription_end: subscriptionEnd,
+      has_used_trial: hasUsedTrial,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
