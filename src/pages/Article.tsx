@@ -245,14 +245,14 @@ export default function Article() {
           {article && (
             <div className="relative min-h-[300px]">
               <div
-                className={`prose prose-lg max-w-none text-foreground relative ${
+                className={`relative ${
                   shouldShowPaywall && shouldTruncateContent ? "max-h-[600px] overflow-hidden" : ""
                 }`}
               >
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeRaw, [rehypeSanitize, richTextSanitizeSchema]]}
-                  className="prose prose-lg max-w-none text-foreground"
+                  className="article-body prose prose-lg max-w-none text-foreground"
                 >
                   {articleRichContent || articlePlainContent}
                 </ReactMarkdown>
