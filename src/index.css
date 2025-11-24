@@ -120,7 +120,7 @@ All colors MUST be HSL.
 
 @layer components {
   .article-body {
-    @apply leading-[1.9] md:leading-loose tracking-wide text-base md:text-lg text-foreground;
+    @apply leading-[1.9] md:leading-loose tracking-wide text-[0.95rem] md:text-base font-normal text-foreground;
   }
 
   .article-body > *:first-child {
@@ -173,10 +173,12 @@ All colors MUST be HSL.
   .article-body img,
   .article-body video,
   .article-body figure {
-    @apply rounded-2xl shadow-card my-10 mx-auto max-w-full;
+    @apply block rounded-2xl shadow-card my-10 mx-auto max-w-3xl w-full md:w-4/5;
   }
 
-  .article-body figcaption {
-    @apply text-sm text-muted-foreground text-center mt-3;
+  .article-body figcaption,
+  .article-body .img-desc,
+  .article-body [class*="img-desc"] {
+    @apply block text-sm text-muted-foreground text-center mt-3;
   }
 }

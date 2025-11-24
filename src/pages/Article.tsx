@@ -45,6 +45,50 @@ const richTextSanitizeSchema = {
   },
 };
 
+const normalizeHeadingText = (value: string | null | undefined) =>
+  stripHtml(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const extractHeadingContent = (line: string) => {
+  const trimmed = line.trim();
+  const markdownMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+  if (markdownMatch) {
+    return markdownMatch[2];
+  }
+  const htmlMatch = trimmed.match(/^<h([1-6])\b[^>]*>([\s\S]+)<\/h\1>$/i);
+  if (htmlMatch) {
+    return htmlMatch[2];
+  }
+  return null;
+};
+
+const removeTitleHeadingDuplicates = (content: string, primaryTitle: string, translationTitle?: string | null) => {
+  if (!content) return content;
+  const normalizedPrimary = normalizeHeadingText(primaryTitle);
+  const normalizedTranslation = normalizeHeadingText(translationTitle);
+  if (!normalizedPrimary && !normalizedTranslation) return content;
+
+  const lines = content.split(/\n/);
+  const result: string[] = [];
+
+  for (const line of lines) {
+    const headingText = extractHeadingContent(line);
+    if (!headingText) {
+      result.push(line);
+      continue;
+    }
+    const normalized = normalizeHeadingText(headingText);
+    if (normalized && (normalized === normalizedPrimary || normalized === normalizedTranslation)) {
+      continue;
+    }
+    result.push(line);
+  }
+
+  return result.join("\n");
+};
+
 export default function Article() {
   const params = useParams<{ slug?: string; locale?: string; id?: string; title?: string }>();
   const slug = params.slug;
@@ -118,7 +162,12 @@ export default function Article() {
       normalizedContent = normalizedContent.replace(/^(#+)(?![\s#])/gm, "$1 ");
       normalizedContent = normalizedContent.replace(new RegExp("^(#{1,6}\\s[^\\n]+)(?!\\n)", "gm"), "$1\n");
     }
-    const plainContent = stripHtml(normalizedContent || "").trim();
+    const dedupedContent = removeTitleHeadingDuplicates(
+      normalizedContent,
+      titleCandidate || data.title || "",
+      language === "ko" ? data.titleEn ?? data.title : data.titleKo ?? data.title
+    );
+    const plainContent = stripHtml(dedupedContent || "").trim();
 
     const path = buildArticlePath(
       {
@@ -137,7 +186,7 @@ export default function Article() {
       date: data.isoDate,
       tags,
       contentPlain: plainContent,
-      contentRich: normalizedContent,
+      contentRich: dedupedContent,
       recommendation: null as string | null,
       path,
     };
@@ -201,7 +250,7 @@ export default function Article() {
         ))}
       </Helmet>
       <div className="min-h-screen py-12 px-4">
-      <div className="container mx-auto max-w-4xl">
+      <div className="container mx-auto max-w-4xl px-4">
         {/* Back Button */}
         <Link to="/archive" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -221,7 +270,7 @@ export default function Article() {
         )}
 
         {/* Article Header */}
-        <article className="bg-card rounded-2xl border border-border shadow-card p-8 mb-8">
+        <article className="bg-card rounded-2xl border border-border shadow-card p-8 md:px-14 md:py-10 mb-8">
           {/* Meta Info */}
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
             <div className="flex items-center gap-2">
