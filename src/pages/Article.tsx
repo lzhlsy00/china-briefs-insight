@@ -222,6 +222,9 @@ export default function Article() {
   const previewLimit = 500;
   const shouldTruncateContent = articlePlainContent.length > previewLimit;
   const shouldShowPaywall = !isProSubscriber;
+  const previewContent = articlePlainContent.slice(0, previewLimit).trim();
+  const previewDisplay = shouldTruncateContent ? `${previewContent}…` : previewContent;
+  const renderedContent = shouldShowPaywall ? previewDisplay : articleRichContent || articlePlainContent;
   const canonicalUrl = buildCanonicalUrl(article ? article.path : "/archive");
   const pageTitle = article?.title ? `${article.title} | ${seoDefaults.siteName}` : seoDefaults.title;
   const descriptionSource = shouldShowPaywall ? articlePlainContent.substring(0, previewLimit) : articlePlainContent;
@@ -303,7 +306,7 @@ export default function Article() {
                   rehypePlugins={[rehypeRaw, [rehypeSanitize, richTextSanitizeSchema]]}
                   className="article-body prose prose-lg max-w-none text-foreground"
                 >
-                  {articleRichContent || articlePlainContent}
+                  {renderedContent}
                 </ReactMarkdown>
                 {shouldShowPaywall && shouldTruncateContent && (
                   <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-card to-transparent" />
