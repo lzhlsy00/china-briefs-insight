@@ -29,17 +29,17 @@ const richTextSanitizeSchema = {
     ...(defaultSchema.attributes || {}),
     "*": [
       ...((defaultSchema.attributes && defaultSchema.attributes["*"]) || []),
-      ["style", /^[-:,;#%\.\w\s()]+$/i],
+      ["style", /^[-:,;#%.\w\s()]+$/i],
       ["className", /^[-_\w\s]+$/],
       ["align", /^(left|right|center|justify)$/],
     ],
     p: [
       ...((defaultSchema.attributes && defaultSchema.attributes.p) || []),
-      ["style", /^[-:,;#%\.\w\s()]+$/i],
+      ["style", /^[-:,;#%.\w\s()]+$/i],
     ],
     span: [
       ...((defaultSchema.attributes && defaultSchema.attributes.span) || []),
-      ["style", /^[-:,;#%\.\w\s()]+$/i],
+      ["style", /^[-:,;#%.\w\s()]+$/i],
       ["className", /^[-_\w\s]+$/],
     ],
   },
@@ -189,6 +189,7 @@ export default function Article() {
       contentRich: dedupedContent,
       recommendation: null as string | null,
       path,
+      heroImageUrl: data.heroImageUrl ?? null,
     };
   }, [data, language, slug]);
 
@@ -241,11 +242,11 @@ export default function Article() {
         <meta property="og:type" content={article ? "article" : "website"} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:site_name" content={seoDefaults.siteName} />
-        <meta property="og:image" content={seoDefaults.ogImage} />
+        <meta property="og:image" content={article?.heroImageUrl || seoDefaults.ogImage} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={seoDefaults.ogImage} />
+        <meta name="twitter:image" content={article?.heroImageUrl || seoDefaults.ogImage} />
         <meta name="keywords" content={(article?.tags || []).join(", ")} />
         {article?.date && <meta property="article:published_time" content={article.date} />}
         {article?.tags?.map((tag) => (
@@ -289,6 +290,16 @@ export default function Article() {
               ))}
             </div>
           </div>
+
+          {article?.heroImageUrl && (
+            <div className="mb-6">
+              <img
+                src={article.heroImageUrl}
+                alt={article.title}
+                className="w-full max-h-[420px] object-cover rounded-2xl shadow-sm"
+              />
+            </div>
+          )}
 
           {/* Title */}
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">{article?.title || ""}</h1>

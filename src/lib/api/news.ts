@@ -17,6 +17,7 @@ export interface PublicNewsItem {
   category: string | null;
   "category-en"?: string | null;
   "category-ko"?: string | null;
+  heroImageUrl?: string | null;
 }
 
 export interface PublicNewsPagination {
