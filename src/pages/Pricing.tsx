@@ -85,8 +85,9 @@ export default function Pricing() {
       if (data?.url) {
         window.open(data.url, "_blank");
       }
-    } catch (error: any) {
-      toast.error(error.message || t.payment.processingError);
+    } catch (caughtError) {
+      const fallbackMessage = caughtError instanceof Error ? caughtError.message : t.payment.processingError;
+      toast.error(fallbackMessage || t.payment.processingError);
     } finally {
       setIsLoading(false);
     }

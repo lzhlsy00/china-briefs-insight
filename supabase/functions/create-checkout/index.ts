@@ -173,37 +173,42 @@ serve(async (req) => {
 
     logStep("Checkout trial configuration", { includeTrial });
 
-    const buildSessionParams = (targetPriceId: string) => ({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      client_reference_id: user.id,
-      metadata: {
-        user_id: user.id,
-        supabase_email: user.email,
-      },
-      subscription_data: subscriptionData,
-      line_items: [
-        {
-          price: targetPriceId,
-          quantity: 1,
-          // 可以动态覆盖产品显示信息
-          /*
-          price_data: {
-            product_data: {
-              name: localePreference === "ko" ? "BiteChina Pro 구독" : "BiteChina Pro Subscription",
-              description: localePreference === "ko" 
-                ? "독점 기능이 포함된 프리미엄 구독"
-                : "Premium subscription with exclusive features",
-            },
-          },
-          */
+    const buildSessionParams = (targetPriceId: string) => {
+      const params: Stripe.Checkout.SessionCreateParams = {
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        client_reference_id: user.id,
+        metadata: {
+          user_id: user.id,
+          supabase_email: user.email,
         },
-      ],
-      mode: "subscription",
-      success_url: `${req.headers.get("origin")}/pricing?success=true`,
-      cancel_url: `${req.headers.get("origin")}/pricing?canceled=true`,
-      locale: localePreference === "ko" ? "ko" : "en", // 韩国显示韩文，其他地区强制英文
-    });
+        subscription_data: subscriptionData,
+        line_items: [
+          {
+            price: targetPriceId,
+            quantity: 1,
+            // 可以动态覆盖产品显示信息
+            /*
+            price_data: {
+              product_data: {
+                name: localePreference === "ko" ? "BiteChina Pro 구독" : "BiteChina Pro Subscription",
+                description: localePreference === "ko" 
+                  ? "독점 기능이 포함된 프리미엄 구독"
+                  : "Premium subscription with exclusive features",
+              },
+            },
+            */
+          },
+        ],
+        mode: "subscription",
+        success_url: `${req.headers.get("origin")}/pricing?success=true`,
+        cancel_url: `${req.headers.get("origin")}/pricing?canceled=true`,
+        locale: localePreference === "ko" ? "ko" : "en", // 韩国显示韩文，其他地区强制英文
+        allow_promotion_codes: true,
+      };
+
+      return params;
+    };
 
     let session;
     try {

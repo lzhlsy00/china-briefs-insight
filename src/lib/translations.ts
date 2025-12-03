@@ -120,7 +120,7 @@ export const translations = {
       cancelAnytime: "언제든 취소 가능",
       securePayment: "안전한 결제",
     },
-    
+
     testimonials: {
       title: "구독자 후기",
       testimonial1: {
@@ -382,7 +382,7 @@ export const translations = {
       cancelAnytime: "Cancel anytime",
       securePayment: "Secure payment",
     },
-    
+
     testimonials: {
       title: "Customer Reviews",
       testimonial1: {
