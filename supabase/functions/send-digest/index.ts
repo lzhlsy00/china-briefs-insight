@@ -52,21 +52,37 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    const { data: latestContent, error: contentError } = await supabase
-      .from("push_content")
-      .select("id, title, content, date, published")
-      .eq("published", false)
-      .order("date", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // Parse request body to get contentId
+    const { contentId } = await req.json().catch(() => ({ contentId: null }));
 
-    if (contentError) {
-      throw contentError;
+    let latestContent;
+
+    if (contentId) {
+      const { data, error } = await supabase
+        .from("push_content")
+        .select("id, title, content, date, published, local")
+        .eq("id", contentId)
+        .maybeSingle();
+
+      if (error) throw error;
+      latestContent = data;
+    } else {
+      // Fallback to latest unpublished
+      const { data, error } = await supabase
+        .from("push_content")
+        .select("id, title, content, date, published, local")
+        .eq("published", false)
+        .order("date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      latestContent = data;
     }
 
     if (!latestContent) {
-      logStep("No unpublished content found");
-      return new Response(JSON.stringify({ message: "No unpublished push content to send" }), {
+      logStep("No content found to send");
+      return new Response(JSON.stringify({ message: "No push content found" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -85,7 +101,7 @@ serve(async (req) => {
 
     const { data: subscribers, error: subscriberError } = await supabase
       .from("user_profiles")
-      .select("email")
+      .select("email, locale")
       .in("subscription_status", ["pro", "trial"])
       .not("email", "is", null);
 
@@ -93,12 +109,32 @@ serve(async (req) => {
       throw subscriberError;
     }
 
+    const targetLocale = latestContent.local; // 'KO' or 'EN' (or null/other)
+
     const recipients = (subscribers ?? []).filter((user) => {
       const email = user.email?.trim();
-      return email && !alreadySentSet.has(email);
+      if (!email || alreadySentSet.has(email)) {
+        return false;
+      }
+
+      // Locale filtering logic
+      const userLocale = user.locale; // 'KO' or 'EN' or null
+
+      if (targetLocale === 'KO') {
+        // If content is Korean, only send to Korean users
+        return userLocale === 'KO';
+      } else {
+        // If content is NOT Korean (e.g. EN), send to everyone EXCEPT Korean users
+        return userLocale !== 'KO';
+      }
     });
 
     if (recipients.length === 0) {
+      // If we are sending a specific contentId and no recipients found, we might not want to mark it published automatically
+      // But for consistency with previous logic, if it was an automatic job (no contentId), we mark it.
+      // If it's manual (contentId present), we probably still want to mark it as "processed" or just return.
+      // Let's keep the logic: mark published if it was intended to be sent but no one to send to.
+
       const { error: publishError } = await supabase
         .from("push_content")
         .update({ published: true })
@@ -108,7 +144,7 @@ serve(async (req) => {
         logStep("Failed to mark content as published", { contentId: latestContent.id, message: publishError.message });
       }
 
-      logStep("No new recipients", { contentId: latestContent.id });
+      logStep("No new recipients", { contentId: latestContent.id, targetLocale });
       return new Response(JSON.stringify({ message: "No new recipients to notify" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
