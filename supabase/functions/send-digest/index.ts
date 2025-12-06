@@ -60,7 +60,7 @@ serve(async (req) => {
     if (contentId) {
       const { data, error } = await supabase
         .from("push_content")
-        .select("id, title, content, date, published, local")
+        .select("id, title, content, date, published, local, banner, footer")
         .eq("id", contentId)
         .maybeSingle();
 
@@ -70,7 +70,7 @@ serve(async (req) => {
       // Fallback to latest unpublished
       const { data, error } = await supabase
         .from("push_content")
-        .select("id, title, content, date, published, local")
+        .select("id, title, content, date, published, local, banner, footer")
         .eq("published", false)
         .order("date", { ascending: true })
         .limit(1)
@@ -159,6 +159,9 @@ serve(async (req) => {
     };
 
     const renderedContent = (latestContent.content ?? "").replace(/\n/g, "<br />");
+    const bannerHtml = latestContent.banner ? `<div style="margin-bottom: 24px;">${latestContent.banner}</div>` : "";
+    const footerHtml = latestContent.footer ? `<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #64748b;">${latestContent.footer}</div>` : "";
+
     const sendDate = new Date().toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -188,6 +191,8 @@ serve(async (req) => {
               <td style="padding: 0 32px 32px 32px;">
                 <div style="border-radius: 12px; background: #f1f5f9; color: #0f172a; padding: 24px; font-size: 16px; line-height: 1.7;">
                   ${renderedContent}
+                  ${bannerHtml}
+                  ${footerHtml}
                 </div>
               </td>
             </tr>
