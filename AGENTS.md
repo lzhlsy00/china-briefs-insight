@@ -1,22 +1,22 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Runtime code sits in `src/`: `src/main.tsx` boots providers, `src/App.tsx` assembles layout, `src/pages/` holds screens, and `src/components/`, `src/contexts/`, `src/hooks/`, and `src/lib/` cover shared UI and state helpers. Keep API and Supabase clients inside `src/integrations/` so route files stay declarative. Assets remain in `public/`, build products land in `dist/`, and Supabase config, migrations, plus edge functions live under `supabase/`.
+Runtime code lives in `src/`: `src/main.tsx` wires global providers, `src/App.tsx` composes layout, and `src/pages/` holds screen-level components. Shared UI and logic belong in `src/components/`, `src/contexts/`, `src/hooks/`, and `src/lib/`, while API and Supabase helpers stay inside `src/integrations/` so routes remain declarative. Assets ship from `public/`, build artifacts land in `dist/`, and Supabase schema, migrations, plus edge handlers are versioned under `supabase/`. Keep any new tests or story-style sandboxes adjacent to the feature file.
 
 ## Build, Test, and Development Commands
-- `npm run dev` serves the app at http://localhost:5173 with hot reload.
-- `npm run build` compiles the optimized bundle used for preview or deployment.
-- `npm run preview` serves the last build locally for final smoke tests.
-- `npm run lint` runs ESLint with Tailwind + TypeScript plugins; fix violations or explain intentional ignores in the PR.
+- `npm run dev`: Launches Vite on http://localhost:5173 with hot reload for manual flow checks.
+- `npm run build`: Produces the optimized bundle used for `preview` and deployment sanity checks.
+- `npm run preview`: Serves the last build locally; exercise onboarding, article detail, and saved-brief paths here before shipping.
+- `npm run lint`: Runs ESLint configured for TypeScript, Tailwind, and shadcn utilities; resolve or explain any warnings.
 
 ## Coding Style & Naming Conventions
-Author functional React + TypeScript components with two-space indentation, ES modules, and the `@/` alias instead of deep relative paths. Use PascalCase for components/routes, camelCase for hooks and utilities, and co-locate Tailwind utility strings or small CSS files with the component. Compose UI through Tailwind plus `clsx` or `class-variance-authority`, and update `components.json` whenever a new shadcn primitive is pulled in.
+Author functional React + TypeScript components with two-space indentation, ES modules, and the `@/` alias to avoid deep relatives. Components/routes use PascalCase, hooks/utilities use camelCase, and Tailwind utility strings sit inline or in tiny local CSS files. Compose class names via `clsx` or `class-variance-authority`, and update `components.json` whenever a new shadcn primitive is installed.
 
 ## Testing Guidelines
-There is no automated suite; every PR must manually check onboarding, article detail, and saved-brief flows through `npm run dev` and `npm run preview`. When adding tests, adopt Vitest + React Testing Library, name files `FeatureName.test.tsx` next to the component, and execute via `npx vitest --run` until an npm script is added. Call out any remaining gaps or data dependencies directly in the PR description.
+There is no automated suite yet, so every pull request must manually verify onboarding, article detail, and saved-brief flows in both `npm run dev` and `npm run preview`. When adding coverage, pair Vitest with React Testing Library, name files `FeatureName.test.tsx`, colocate them with the component, and run them through `npx vitest --run`. Call out data dependencies and remaining gaps in the PR description.
 
 ## Commit & Pull Request Guidelines
-Match the repository’s short-date prefixes from `git log` (e.g., `11.14-2 tighten newsletter copy`) and keep each commit focused on a single change. Pull requests should summarize the user-visible impact, list the commands executed (`npm run lint`, `npm run preview`), attach UI captures, and describe Supabase migrations or new environment variables. Link the related Notion or GitHub issue, and ensure schema updates and frontend code land together.
+Commits follow short-date prefixes from `git log` (e.g., `11.14-2 tighten newsletter copy`) and should remain single-purpose. Pull requests summarize user-visible impact, list the commands executed (lint, build, preview), include UI captures, document Supabase migrations or environment variable changes, and link the related Notion or GitHub issue. Ship schema updates and frontend changes in the same PR to keep reviewers aligned.
 
 ## Security & Configuration Tips
-Environment-aware clients read `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_NEWS_API_BASE_URL`; set them in `.env.local` and replicate them in hosting secrets before merging. Version SQL in `supabase/migrations/` and deploy edge handlers from `supabase/functions/`, referencing the change in the PR checklist. Avoid logging credentials, guard experiments with `import.meta.env.DEV`, and run `npm run build` locally to catch accidental exposure before shipping.
+Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_NEWS_API_BASE_URL` inside `.env.local` and mirror them in hosting secrets. Version SQL in `supabase/migrations/` and deploy edge handlers from `supabase/functions/`, referencing them in the PR checklist. Never log credentials, wrap experiments behind `import.meta.env.DEV`, and run `npm run build` locally to verify nothing sensitive leaks into the bundle.

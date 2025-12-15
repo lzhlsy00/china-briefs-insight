@@ -3,7 +3,7 @@ const FALLBACK_ORIGIN = "https://www.bitechina.com";
 export const seoDefaults = {
   siteName: "BiteChina",
   title: "BiteChina - China, in one bite",
-  description: "Bite-sized insights on China's AI, tech, and brands. Curated daily briefs for busy operators.",
+  description: "Bite-sized insights on China's AI, tech, and brands. Curated weekly briefs for busy operators.",
   ogImage: "https://lovable.dev/opengraph-image-p98pqg.png",
 };
 

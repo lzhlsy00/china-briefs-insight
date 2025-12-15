@@ -5,7 +5,15 @@ const slugify = (title: string | null | undefined, id: number) => {
   if (!trimmed) {
     return `story-${id}`;
   }
-  return encodeURIComponent(trimmed.replace(/\s+/g, "-"));
+
+  const sanitized = trimmed
+    .replace(/[^\w\s\-\uAC00-\uD7A3\u4E00-\u9FFF]/g, " ")
+    .replace(/_+/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return encodeURIComponent(sanitized || `story-${id}`);
 };
 
 export const buildArticlePath = (

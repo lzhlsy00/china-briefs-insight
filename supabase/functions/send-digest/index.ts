@@ -160,7 +160,9 @@ serve(async (req) => {
 
     const renderedContent = (latestContent.content ?? "").replace(/\n/g, "<br />");
     const bannerHtml = latestContent.banner ? `<div style="margin-bottom: 24px;">${latestContent.banner}</div>` : "";
-    const footerHtml = latestContent.footer ? `<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #64748b;">${latestContent.footer}</div>` : "";
+    const footerHtml = latestContent.footer
+      ? `<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #64748b;">${latestContent.footer}</div>`
+      : "";
 
     const sendDate = new Date().toLocaleDateString("en-US", {
       year: "numeric",
