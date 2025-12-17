@@ -61,17 +61,38 @@ serve(async (req) => {
     if (contentId) {
       const { data, error } = await supabase
         .from("push_content")
-        .select("id, title, content, date, published, local, banner, footer")
+        .select("id, title, subject, content, date, published, local, banner, footer")
         .eq("id", contentId)
         .maybeSingle();
 
-      if (error) throw error;
-      latestContent = data;
+      if (error) {
+        logStep("Error querying push_content with subject", { 
+          error: error.message, 
+          contentId,
+          code: error.code,
+          details: error.details 
+        });
+        // Try again without subject field
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("push_content")
+          .select("id, title, content, date, published, local, banner, footer")
+          .eq("id", contentId)
+          .maybeSingle();
+        
+        if (fallbackError) {
+          logStep("Error querying push_content without subject", { error: fallbackError.message });
+          throw fallbackError;
+        }
+        latestContent = fallbackData;
+        logStep("Fallback query succeeded without subject field");
+      } else {
+        latestContent = data;
+      }
     } else {
       // Fallback to latest unpublished
       const { data, error } = await supabase
         .from("push_content")
-        .select("id, title, content, date, published, local, banner, footer")
+        .select("id, title, subject, content, date, published, local, banner, footer")
         .eq("published", false)
         .order("date", { ascending: true })
         .limit(1)
@@ -171,7 +192,9 @@ serve(async (req) => {
       month: "long",
       day: "numeric",
     });
-    const subject = `BiteChina Newsletter - ${sendDate}`;
+    // Clean subject: remove newlines and extra spaces
+    const rawSubject = (latestContent.subject && latestContent.subject.trim()) || `BiteChina Newsletter - ${sendDate}`;
+    const subject = rawSubject.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
 
     const htmlBody = `<!DOCTYPE html>
 <html>
@@ -189,8 +212,11 @@ serve(async (req) => {
                 <a href="${siteUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block;">
                   <img src="https://www.bitechina.com/BiteChina.png" alt="BiteChina" width="160" style="display: block; margin: 0 auto 12px;" />
                 </a>
-                <h1 style="font-size: 28px; font-weight: 700; margin: 0; color: #0f172a;">${subject}</h1>
-                <p style="color: #64748b; font-size: 16px; margin: 12px 0 0;">🗞️ China Tech, Brand & AI Daily<br />Stay updated with China&apos;s latest tech, AI, and consumer trends — in one bite.</p>
+                <h1 style="font-size: 28px; font-weight: 700; margin: 0; color: #0f172a;">${latestContent.title || subject}</h1>
+                <p style="color: #64748b; font-size: 16px; margin: 12px 0 0;">${latestContent.local === 'KO' 
+                  ? '🗞️ 차이나 테크, 브랜드 & AI 데일리<br />중국의 최신 기술, AI, 소비자 트렌드를 한 입에 만나보세요.' 
+                  : '🗞️ China Tech, Brand & AI Daily<br />Stay updated with China&apos;s latest tech, AI, and consumer trends — in one bite.'
+                }</p>
               </td>
             </tr>
             <tr>
