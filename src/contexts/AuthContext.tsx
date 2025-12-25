@@ -10,6 +10,7 @@ interface SubscriptionStatus {
   productId: string | null;
   subscriptionEnd: string | null;
   hasUsedTrial: boolean;
+  currency: string | null;
 }
 
 interface AuthContextType {
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     productId: null,
     subscriptionEnd: null,
     hasUsedTrial: false,
+    currency: null,
   });
   const [isLoading, setIsLoading] = useState(true);
   const ensuredUserIdRef = useRef<string | null>(null);
@@ -64,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSubscription = async (userSession: Session | null) => {
     if (!userSession) {
-      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
+      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false, currency: null });
       return;
     }
 
@@ -84,11 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         productId: data.product_id || null,
         subscriptionEnd: data.subscription_end || null,
         hasUsedTrial: Boolean(data.has_used_trial),
+        currency: data.currency || null,
       });
     } catch (error) {
       console.error("Error checking subscription:", error);
       // Set default unsubscribed state on error (e.g., Stripe not configured)
-      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
+      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false, currency: null });
     }
   };
 
@@ -110,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             checkSubscription(currentSession);
           }, 0);
         } else {
-          setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
+          setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false, currency: null });
         }
       }
     );
@@ -248,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut({ scope: 'global' });
       
       // Clear local state immediately
-      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false });
+      setSubscription({ subscribed: false, productId: null, subscriptionEnd: null, hasUsedTrial: false, currency: null });
       setUser(null);
       setSession(null);
       ensuredUserIdRef.current = null;

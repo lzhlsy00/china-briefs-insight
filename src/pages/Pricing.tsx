@@ -69,18 +69,22 @@ export default function Pricing() {
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: {
-          region: isKoreanPricing ? "KR" : "DEFAULT",
-          locale: isKoreanPricing ? "ko" : "en",
+          // 已订阅用户：根据订阅币种决定；新用户：根据语言决定
+          region: (subscription.subscribed && subscription.currency)
+            ? (subscription.currency === "krw" ? "KR" : "DEFAULT")
+            : (language === "ko" ? "KR" : "DEFAULT"),
+          locale: language === "ko" ? "ko" : "en",
         },
       });
 
-      if (error) throw error;
-      
-      // 检查后端返回的错误
+      // 先检查业务错误（即使 HTTP 400 也会有 data）
       if (data?.error === "CURRENCY_MISMATCH") {
         toast.error(t.payment.currencyMismatch);
         return;
       }
+
+      // 再检查其他错误
+      if (error) throw error;
 
       if (data?.url) {
         window.open(data.url, "_blank");

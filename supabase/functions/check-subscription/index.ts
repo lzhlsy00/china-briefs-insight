@@ -104,6 +104,7 @@ serve(async (req) => {
     const isTrialing = eligibleSubscription?.status === "trialing";
     let productId = null;
     let subscriptionEnd = null;
+    let subscriptionCurrency: string | null = null;
 
     if (eligibleSubscription) {
       const endTimestamp = isTrialing
@@ -127,6 +128,11 @@ serve(async (req) => {
         logStep("Determined subscription tier", { productId });
       } else {
         logStep("Subscription item missing product info", { subscriptionId: eligibleSubscription.id });
+      }
+      // 提取订阅的币种
+      subscriptionCurrency = firstItem?.price?.currency ?? null;
+      if (subscriptionCurrency) {
+        logStep("Determined subscription currency", { currency: subscriptionCurrency });
       }
     } else {
       logStep("No active or trialing subscription found");
@@ -177,6 +183,7 @@ serve(async (req) => {
       product_id: productId,
       subscription_end: subscriptionEnd,
       has_used_trial: hasUsedTrial,
+      currency: subscriptionCurrency,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
